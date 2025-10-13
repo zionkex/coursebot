@@ -1,4 +1,5 @@
 import asyncio
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from database.engine import DatabaseConnecter
@@ -21,7 +22,9 @@ redis = Redis.from_url(f"redis://:{settings.redis.password}@localhost:6379/0")
 
 async def main():
     async with db2.sessionmaker() as session:
-        data = await get_student_lessons(session=session, student_id=1, period=7)
+        schedules = await get_user_schedule(session=session, user_id=1)
+        for schedule in schedules:
+            print(schedule.start_time-timedelta(2))
         # data = await get_user_schedule(session=session, user_id=1)
         # for i in data:
         #     print(i.course.title)

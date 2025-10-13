@@ -1,4 +1,5 @@
 from datetime import time
+from zoneinfo import ZoneInfo
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -7,9 +8,10 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.redis import RedisJobStore
 from config import settings
 from database.engine import db_connecter
-from database.queries import get_user_and_teacher_url_by_schedule
+from database.queries import get_user_and_teacher_url_by_schedule, get_user_schedule
 from keyboards.inline import reminder_kb
 from testAI import generate_reminder, TimeEnum
+from utils.time import get_hour
 
 
 jobstore = RedisJobStore(
@@ -18,7 +20,7 @@ jobstore = RedisJobStore(
     password=settings.redis.password,
     db=0,
 )
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/Kyiv"))
 scheduler.add_jobstore(jobstore, "default")
 
 bot = Bot(
@@ -63,6 +65,24 @@ def add_reminder_job(
         replace_existing=True,
         args=[schedule_id, reminder_type],
     )
+
+
+async def add_all_scheduler(user_id):
+    async with db_connecter.sessionmaker() as session:
+        schedules = await get_user_schedule(session=session, user_id=user_id)
+        for schedule in schedules:
+            add_reminder_job(
+                schedule_id=schedule.id,
+                day_of_week=schedule.day_of_week,
+                reminder_type="2h",
+                lesson_time=get_hour(schedule.start_time, delta=2, hours=True),
+            )
+            add_reminder_job(
+                schedule_id=schedule.id,
+                day_of_week=schedule.day_of_week,
+                reminder_type="15m",
+                lesson_time=get_hour(schedule.start_time, delta=15, hours=False),
+            )
 
 
 # def add_tets():

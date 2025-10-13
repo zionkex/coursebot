@@ -8,7 +8,7 @@ from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from config import settings
 from middlewares.session import DataBaseSession
 from database.engine import db_connecter
-from services.scheduler import add_reminder_job, scheduler
+from services.scheduler import add_all_scheduler, add_reminder_job, scheduler
 from handlers import main_router
 
 dp = Dispatcher(
@@ -31,7 +31,7 @@ async def main():
     # add_reminder_job(schedule_id=1, day_of_week=1, lesson_time=1, reminder_type="15m")
     # add_reminder_job()
     # scheduler.ctx.add_instance(bot, declared_class=Bot)
-
+    await add_all_scheduler(1)
     try:
         await dp.start_polling(bot)
     finally:

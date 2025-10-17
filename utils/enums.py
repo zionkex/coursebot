@@ -7,3 +7,7 @@ class RoleEnum(enum.Enum):
     ADMIN = "admin"
     USER = "user"
     PARENT = "parent"
+
+
+class TeacherEnum(enum.Enum):
+    students_lesson = "students_lesson"

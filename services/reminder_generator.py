@@ -2,6 +2,8 @@ import asyncio
 from enum import Enum
 import httpx
 
+from utils.time import TimeEnum
+
 # token = "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"
 models = [
     "google/gemma-3-27b-it:free",
@@ -10,14 +12,9 @@ models = [
     "meta-llama/llama-4-maverick:free",
 ]
 tokens = [
-    "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",
+    "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",
     "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",
 ]
-
-
-class TimeEnum(Enum):
-    two_hour = "2 години"
-    fifteen_minutes = "15 хвилин"
 
 
 async def generate_reminder(time_left: TimeEnum, student_name: str | None = None):
@@ -31,7 +28,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
             )
         elif time_left.value == TimeEnum.fifteen_minutes.value:
             style_hint = (
-                "НЕ(!) починай з привітання та не використовуй код. Зроби повідомлення більш динамічним і коротким, "
+                "НЕ(!) привітайся та не використовуй код <code> взагалі. Зроби повідомлення більш динамічним і коротким, "
                 "ніби нагадування від друга перед стартом."
             )
         while True:
@@ -57,19 +54,18 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                             {
                                 "role": "user",
                                 "content": (
+                                    f"{style_hint}"
                                     f"Створи коротке, веселе нагадування для дитини до 12 років "
                                     f"{f'на ім’я {student_name} ' if student_name else ''}"
                                     f"про те, що урок програмування на Python 🐍 почнеться через {time_left}. "
                                     "Текст має бути доброзичливим, з емодзі і одним жартівливим рядком Python-коду "
                                     "всередині тегу <code>. Не пиши про HTML або пояснення."
-                                    f"{style_hint}"
                                 ),
                             },
                         ],
                     },
                 )
                 data = response.json()
-                print(response.raise_for_status())
                 if response.status_code == 200:
                     text = data["choices"][0]["message"]["content"]
                     print(
@@ -86,7 +82,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                         model_index += 1
                     else:
                         i += 1
-                elif e.response.status_code == 400:
+                elif e.response.status_code >= 400:
                     model_index += 1
                 await asyncio.sleep(1)
             except (httpx.ReadTimeout, httpx.ConnectTimeout):
@@ -99,26 +95,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
 
 async def main():
     # Нагадування за 2 години
-    await generate_reminder(TimeEnum.two_hour, "Давид")
-
-    # Нагадування за 15 хвилин
-    # await generate_reminder(TimeEnum.fifteen_minutes, "Давид")
+    await generate_reminder(TimeEnum.fifteen_minutes, "Давид")
 
 
-# async def check():
-#     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
-#         response = await client.get(
-#             url="https://openrouter.ai/api/v1/key",
-#             headers={
-#                 "Authorization": f"Bearer {tokens[0]}",
-#                 "Content-Type": "application/json",
-#             },
-#         )
-#         print(response)
-#         print(response.json())
-
-
-if __name__ == "__main__":
-    asyncio.run(
-        generate_reminder(time_left=TimeEnum.fifteen_minutes, student_name="Давид")
-    )
+asyncio.run(main())

@@ -1,6 +1,13 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.buttons_enum import MenuButtons, StudentButtons
-from utils.callbacks import MenuCallback, StudentCallback
+from aiogram.types import InlineKeyboardButton
+from utils.callbacks import (
+    MenuCallback,
+    StudentCallback,
+    TZCallback,
+    AdminCallback,
+    TeacherCallback,
+)
 # def main_keyboard() -> InlineKeyboardBuilder:
 #     builder = InlineKeyboardBuilder()
 #     builder.button(text="Курси 📘", callback_data="view_courses")
@@ -18,27 +25,45 @@ def user_keyboard() -> InlineKeyboardBuilder:
     return builder
 
 
-def student_keyboard(selected_button=None) -> InlineKeyboardBuilder:
-    builder = InlineKeyboardBuilder()
-
-    for btn in [
-        StudentButtons.my_profile,
-        StudentButtons.view_schedule,
-        StudentButtons.my_lessons,
-    ]:
-        text = f"✅{btn.text}" if btn == selected_button else btn.text
-        builder.button(
-            text=text, callback_data=StudentCallback(action=btn.menu_name, level=0)
-        )
-    builder.adjust(2)
-    return builder.as_markup()
-
 
 def reminder_kb(url: str | None = None):
     kb = InlineKeyboardBuilder()
     if url:
         kb.button(text="Підключитись на урок", url=url)
     kb.button(
-        text=MenuButtons.main_menu.value, callback_data=MenuCallback(action="main")
+        text=MenuButtons.main_menu.value.text, callback_data=MenuCallback(action="main")
     )
-    return kb.as_markup(1)
+    return kb.adjust(1).as_markup()
+
+
+def timezone_kb(selected_button: int | None = None):
+    kb = InlineKeyboardBuilder()
+    for number in range(-10, 11):
+        text = f"UTC {number:+}"
+        if selected_button == text:
+            text = f"✅{text}"
+        kb.button(text=text, callback_data=TZCallback(zone=number, action=None))
+        kb.adjust(5)
+    kb.add(
+        InlineKeyboardButton(
+            text="Далі➡️", callback_data=TZCallback(action="next").pack()
+        )
+    )
+    return kb.as_markup()
+
+
+def admin_teacher_kb(teacher: bool = False, admin: bool = False):
+    kb = InlineKeyboardBuilder()
+    if teacher:
+        kb.button(
+            text=MenuButtons.teacher_panel.value.text,
+            callback_data=TeacherCallback(
+                action=MenuButtons.teacher_panel.value.menu_name
+            ),
+        )
+    if admin:
+        kb.button(
+            text=MenuButtons.admin_panel.value.text,
+            callback_data=AdminCallback(action=MenuButtons.admin_panel.value.menu_name),
+        )
+    return kb.adjust(1).as_markup()

@@ -13,6 +13,7 @@ class UserCache(msgspec.Struct, kw_only=True):
     student_id: int | None
     teacher_id: int | None
     admin_id: int | None
+    time_delta: int = 0
     # role: str
 
     @classmethod
@@ -38,3 +39,17 @@ class UserCache(msgspec.Struct, kw_only=True):
     async def delete_all(cls, redis: Redis) -> int:
         keys = await redis.keys(f"{cls.__name__}:*")
         return await redis.delete(*keys) if keys else 0
+
+    def is_student(self) -> bool:
+        return self.student_id is not None
+
+    def is_teacher(self) -> bool:
+        return self.teacher_id is not None
+
+    def is_admin(self) -> bool:
+        return self.admin_id is not None
+
+    def is_regular_user(self) -> bool:
+        return not (self.is_student() or self.is_teacher() or self.is_admin())
+    def is_admin_and_teacher(self)->bool:
+        return self.is_teacher() and self.is_admin()

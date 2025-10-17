@@ -47,7 +47,7 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc),
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
+    timedelta: Mapped[int] = mapped_column(Integer, nullable=True, default=0)
     roles: Mapped[list[Role]] = relationship(
         secondary=user_roles_association,
         back_populates="users",
@@ -66,8 +66,6 @@ class User(Base):
     schedules: Mapped[list["UserSchedule"]] = relationship(
         "UserSchedule", back_populates="user", cascade="all, delete-orphan"
     )
-
-
 class Student(Base):
     __tablename__ = "students"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -75,6 +73,7 @@ class Student(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    paid: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     user: Mapped["User"] = relationship(
         "User", back_populates="student_profile", uselist=False
     )
@@ -183,6 +182,7 @@ class StudentLesson(Base):
     date = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    payment: Mapped[bool] = mapped_column(Boolean, server_default="true")
     student = relationship("Student", back_populates="lessons")
     lesson = relationship("Lesson", back_populates="student_lessons")
 

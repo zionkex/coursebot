@@ -5,7 +5,12 @@ from zoneinfo import ZoneInfo
 from database.engine import DatabaseConnecter
 from config import settings
 from database.models import User, UserSchedule
-from database.queries import get_all_users, get_student_lessons, get_user_schedule
+from database.queries import (
+    get_all_users,
+    get_student_lessons,
+    get_teacher_enrollments_with_student_and,
+    get_user_schedule,
+)
 from redis_storages.user_cache import UserCache
 from redis.asyncio import Redis
 
@@ -22,35 +27,46 @@ redis = Redis.from_url(f"redis://:{settings.redis.password}@localhost:6379/0")
 
 async def main():
     async with db2.sessionmaker() as session:
-        schedules = await get_user_schedule(session=session, user_id=1)
-        for schedule in schedules:
-            print(schedule.start_time-timedelta(2))
-        # data = await get_user_schedule(session=session, user_id=1)
-        # for i in data:
-        #     print(i.course.title)
-        # await UserCache.delete_all(redis)
-        # data: list[User] = await get_all_users(session=session, all_profiles=True)
-        # for user in data:
-        # print(user.lesson.lesson_number)
-        # if user.student_profile:
-        #     print(user.student_profile.id)
-        # if user.teacher_profile:
-        #     print(user.teacher_profile.id)
-        # if user.admin_profile:
-        #     print(user.admin_profile.id)
-        # print("_______________")
-        # user_to_redis = UserCache(
-        #     user_id=user.id,
-        #     student_id=user.student_profile.id if user.student_profile else None,
-        #     teacher_id=user.teacher_profile.id if user.teacher_profile else None,
-        #     admin_id=user.admin_profile.id if user.admin_profile else None,
-        # )
-        # user_to_redis = UserCache(id=user.telegram_id, value=user.id)
-        # await user_to_redis.save(redis=redis,user_telegram_id=user.telegram_id)
-        # user_data = await UserCache.get(
-        #     redis=redis, user_telegram_id=user.telegram_id
-        # )
-        # print(user.telegram_id, "->", user_data)
+        data = await get_teacher_enrollments_with_student_and(
+            session=session, teacher_id=1
+        )
+        for dat in data:
+            print(dat.student.user.telegram_name)
+    # print(await redis.keys("*"))
+    # schedules = await get_user_schedule(session=session, user_id=1)
+    # for schedule in schedules:
+    #     print(schedule.start_time - timedelta(2))
+    # data = await get_user_schedule(session=session, user_id=1)
+    # for i in data:
+    #     print(i.course.title)
+    # await UserCache.delete_all(redis)
+    # data: list[User] = await get_all_users(session=session, all_profiles=True)
+    # for user in data:
+    # print(user)
+    # await UserCache.delete_all(redis=redis)
+    # if user.student_profile:
+    #     print(user.student_profile.id)
+    # if user.teacher_profile:
+    #     print(user.teacher_profile.id)
+    # if user.admin_profile:
+    #     print(user.admin_profile.id)
+    # print("_______________")
+    # user_to_redis = UserCache(
+    #     user_id=user.id,
+    #     student_id=user.student_profile.id if user.student_profile else None,
+    #     teacher_id=user.teacher_profile.id if user.teacher_profile else None,
+    #     admin_id=user.admin_profile.id if user.admin_profile else None,
+    #     time_delta=user.timedelta,
+    # )
+    # user_to_redis.delete_all(redis=redis)
+    # user_to_redis = UserCache(id=user.telegram_id, value=user.id)
+    #     await user_to_redis.save(redis=redis, user_telegram_id=user.telegram_id)
+    #     user_data = await UserCache.get(
+    #         redis=redis, user_telegram_id=user.telegram_id
+    #     )
+    #     print(user_data)
+    # # print(user_data)
+    # print(user.telegram_id, "->", user_data)
 
 
 asyncio.run(main())

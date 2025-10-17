@@ -1,94 +1,56 @@
-from datetime import time
+import asyncio
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
+import msgspec
+from redis.asyncio import Redis
 from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.redis import RedisJobStore
-from config import settings
-from database.engine import db_connecter
-from database.queries import get_user_and_teacher_url_by_schedule, get_user_schedule
-from keyboards.inline import reminder_kb
-from testAI import generate_reminder, TimeEnum
-from utils.time import get_hour
+
+from utils.time import TimeEnum
 
 
-jobstore = RedisJobStore(
-    host=settings.redis.host,
-    port=settings.redis.port,
-    password=settings.redis.password,
-    db=0,
-)
-scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/Kyiv"))
-scheduler.add_jobstore(jobstore, "default")
-
-bot = Bot(
-    token=settings.BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-)
+class Reminder(msgspec.Struct, kw_only=True):
+    user_id: int
+    interval_days: int = 7
+    time: TimeEnum
 
 
-async def remind_before_lesson(schedule_id: int, reminder_type: str, bot: Bot = bot):
-    async with db_connecter.sessionmaker() as session:
-        (
-            user_telegram_id,
-            telegram_name,
-            teacher_url,
-        ) = await get_user_and_teacher_url_by_schedule(
-            session=session, schedule_id=schedule_id
+class Scheduler:
+    def __init__(self, bot_token: str, redis_url="redis://localhost:6379/0"):
+        self.bot = Bot(bot_token)
+        self.redis = Redis.from_url(redis_url, decode_responses=False)
+        self.redis_key = b"reminders"
+        self.loop_task = None
+
+    async def add_reminder(self, reminder: Reminder, day_of_week: int, send_time: time):
+        data = msgspec.msgpack.encode(reminder)
+        now = datetime.now(timezone.utc)
+        days_ahead = (day_of_week - now.weekday()) % 7
+        next_reminder = (now + timedelta(days=days_ahead)).replace(
+            hour=send_time.hour, minute=send_time.minute, second=0, microsecond=0
         )
-        if reminder_type == "2h":
-            text = await generate_reminder(
-                student_name=telegram_name, time_left=TimeEnum.two_hour
-            )
-            kb = None
-        else:
-            text = await generate_reminder(
-                student_name=telegram_name, time_left=TimeEnum.fifteen_minutes
-            )
-            kb = reminder_kb(teacher_url)
-        # text = await two_hour_reminder_text(student_name="Давид")
-    await bot.send_message(chat_id=user_telegram_id, text=text, reply_markup=kb)
-    pass
+        print(
+            f"Нагадування буде відправлено в {next_reminder.astimezone(ZoneInfo('Europe/Kyiv'))}"
+        )
+        await self.redis.zadd(self.redis_key, {data: next_reminder.timestamp()})
 
+    async def send_before_lesson_reminder(self, reminder: Reminder):
+        await self.bot.send_message(chat_id=reminder.user_id)
 
-def add_reminder_job(
-    schedule_id: int, day_of_week: int, lesson_time: time, reminder_type: str
-):
-    scheduler.add_job(
-        remind_before_lesson,
-        CronTrigger(
-            day_of_week=day_of_week, hour=lesson_time.hour, minute=lesson_time.minute
-        ),
-        id=f"job_{reminder_type}_{schedule_id}",
-        replace_existing=True,
-        args=[schedule_id, reminder_type],
-    )
+    async def _process_due_reminders(self):
+        while True:
+            now_ts = datetime.now(timezone.utc).timestamp()
+            reminders = await self.redis.zrangebyscore(self.redis_key, 0, now_ts)
+            for data in reminders:
+                reminder = msgspec.msgpack.decode(data, type=Reminder)
+                self.send_before_lesson_reminder(reminder=reminder)
+                await self.redis.zrem(self.redis_key, data)
+            await asyncio.sleep(1)
 
+    async def start(self):
+        if self.loop_task is None:
+            self.loop_task = asyncio.create_task(self._process_due_reminders())
 
-async def add_all_scheduler(user_id):
-    async with db_connecter.sessionmaker() as session:
-        schedules = await get_user_schedule(session=session, user_id=user_id)
-        for schedule in schedules:
-            add_reminder_job(
-                schedule_id=schedule.id,
-                day_of_week=schedule.day_of_week,
-                reminder_type="2h",
-                lesson_time=get_hour(schedule.start_time, delta=2, hours=True),
-            )
-            add_reminder_job(
-                schedule_id=schedule.id,
-                day_of_week=schedule.day_of_week,
-                reminder_type="15m",
-                lesson_time=get_hour(schedule.start_time, delta=15, hours=False),
-            )
-
-
-# def add_tets():
-#     scheduler.add_job(
-#         remind_two_hours_before_lesson,
-#         CronTrigger(minute="*/1"),
-#         id="job11",
-#         replace_existing=True,
-#     )
+    async def stop(self):
+        if self.loop_task:
+            self.loop_task.cancel()
+            self.loop_task = None

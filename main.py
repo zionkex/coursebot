@@ -1,15 +1,20 @@
 import asyncio
 import sys
+from datetime import time
+
 from aiogram import Bot, Dispatcher
 import logging
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
+from redis.asyncio import Redis
 from config import settings
+from middlewares.redis import RedisConnection
 from middlewares.session import DataBaseSession
 from database.engine import db_connecter
-from services.scheduler import add_all_scheduler, add_reminder_job, scheduler
+from services.scheduler import Reminder, Scheduler
 from handlers import main_router
+from utils.time import TimeEnum
 
 dp = Dispatcher(
     storage=RedisStorage.from_url(
@@ -18,6 +23,7 @@ dp = Dispatcher(
     )
 )
 dp.update.middleware(DataBaseSession(db_connecter.sessionmaker))
+dp.update.middleware(RedisConnection(Redis.from_url(url=settings.redis.url)))
 dp.include_router(main_router)
 
 
@@ -26,12 +32,8 @@ async def main():
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
-    scheduler.start()
-    scheduler.remove_all_jobs()
-    # add_reminder_job(schedule_id=1, day_of_week=1, lesson_time=1, reminder_type="15m")
-    # add_reminder_job()
-    # scheduler.ctx.add_instance(bot, declared_class=Bot)
-    await add_all_scheduler(1)
+    scheduler = Scheduler(redis_url=settings.redis.url, bot_token=settings.BOT_TOKEN)
+    await scheduler.start()
     try:
         await dp.start_polling(bot)
     finally:

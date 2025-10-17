@@ -16,19 +16,24 @@ from sqlalchemy import select
 
 from sqlalchemy.orm import selectinload, joinedload
 from database.models import User
-from utils.role_enums import RoleEnum
+from utils.enums import RoleEnum
 
 
 async def add_user(
     session: AsyncSession, telegram_id: int, telegram_name: str, telegram_username: str
-) -> User:
+) -> int:
     new_user = User(
         telegram_id=telegram_id,
         telegram_name=telegram_name,
         telegram_username=telegram_username,
     )
     session.add(new_user)
-    await session.commit()
+    try:
+        await session.commit()
+        await session.refresh(new_user)
+        return new_user.id
+    except:
+        await session.rollback()
 
 
 async def add_profile(
@@ -174,7 +179,7 @@ async def get_user_and_teacher_url_by_schedule(
     return result.one_or_none()
 
 
-async def get_user_schedule(session: AsyncSession, user_id: int):
+async def get_user_schedule(session: AsyncSession, user_id: int) -> list[UserSchedule]:
     stmt = (
         select(UserSchedule)
         .options(selectinload(UserSchedule.course))
@@ -194,3 +199,33 @@ async def get_student_lessons(session: AsyncSession, student_id: int, period: in
     )
     result = await session.execute(stmt)
     return result.scalars().all()
+
+
+async def get_student_info(session: AsyncSession, student_id: int) -> Student | None:
+    result = await session.execute(
+        select(Student)
+        .options(selectinload(Student.lessons))
+        .where(Student.id == student_id)
+    )
+    return result.scalar_one_or_none()
+
+
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def get_teacher_enrollments_with_student(session: AsyncSession, teacher_id: int):
+    stmt = (
+        select(Enrollment)
+        .select_from(Enrollment)
+        .where(Enrollment.teacher_id == teacher_id)
+        .options(
+            selectinload(Enrollment.student).selectinload(Student.user),
+            selectinload(Enrollment.course),
+        )
+    )
+
+    result = await session.execute(stmt)
+    enrollments = result.scalars().all()
+    return enrollments

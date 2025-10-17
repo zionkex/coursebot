@@ -15,12 +15,12 @@ ADMIN_BUTTONS: list[MenuItem] = [
 ]
 
 
-def admin_panel_keyboard(row_width: int = 3) -> InlineKeyboardBuilder:
+def admin_panel_keyboard(row_width: int = 3):
     builder = InlineKeyboardBuilder()
     for btn in ADMIN_BUTTONS:
         builder.button(
             text=btn.text,
-            callback_data=AdminCallback(action=btn.callback_data, level=0),
+            callback_data=AdminCallback(action=btn.menu_name, level=0),
         )
-    builder.adjust(row_width)
-    return builder
+    builder.adjust(row_width)  
+    return builder.as_markup() 

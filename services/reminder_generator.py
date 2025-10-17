@@ -23,7 +23,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
         if time_left.value == TimeEnum.two_hour.value:
             style_hint = (
-                "Можеш почати з привітання (наприклад, 'Привіт' чи 'Хей' чи щось), "
+                "Можеш почати з привітання (наприклад, 'Привіт' чи 'Хей' чи щось) на початку постав смайл, "
                 "щоб створити дружню атмосферу."
             )
         elif time_left.value == TimeEnum.fifteen_minutes.value:
@@ -66,14 +66,15 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                     },
                 )
                 data = response.json()
+                print(data)
                 if response.status_code == 200:
                     text = data["choices"][0]["message"]["content"]
-                    print(
-                        f"✅ Нагадування ({time_left.value}):\n{text}\n",
-                        "**",
-                        i,
-                        models[model_index],
-                    )
+                    # print(
+                    #     f"✅ Нагадування ({time_left.value}):\n{text}\n",
+                    #     "**",
+                    #     i,
+                    #     models[model_index],
+                    # )
                     print(text)
                     return text
             except httpx.HTTPStatusError as e:
@@ -86,7 +87,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                 elif e.response.status_code >= 400:
                     model_index += 1
                 print(models[model_index], "error")
-                await asyncio.sleep(1)
+                await asyncio.sleep(5)
             except (httpx.ReadTimeout, httpx.ConnectTimeout):
                 await asyncio.sleep(5)
             if model_index == len(models) - 1 and i == len(tokens) - 1:

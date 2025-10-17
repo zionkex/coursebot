@@ -12,12 +12,13 @@ models = [
     "meta-llama/llama-4-maverick:free",
 ]
 tokens = [
+    "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",
     "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",
     "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",
 ]
 
 
-async def generate_reminder(time_left: TimeEnum, student_name: str | None = None):
+async def generate_reminder(time_left: str, student_name: str | None = None):
     i = 0
     model_index = 0
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:

@@ -5,6 +5,9 @@ import msgspec
 from redis.asyncio import Redis
 from aiogram import Bot
 
+from database.engine import db_connecter
+from database.queries import get_user_name
+from services.reminder_generator import generate_reminder
 from utils.time import TimeEnum
 
 
@@ -34,7 +37,10 @@ class Scheduler:
         await self.redis.zadd(self.redis_key, {data: next_reminder.timestamp()})
 
     async def send_before_lesson_reminder(self, reminder: Reminder):
-        await self.bot.send_message(chat_id=reminder.user_id)
+        async with db_connecter.sessionmaker() as session:
+            name =await get_user_name(session=session, user_id=reminder.user_id)
+        text = await generate_reminder(time_left=reminder.time, student_name=name)
+        await self.bot.send_message(chat_id=reminder.user_id,text=text)
 
     async def _process_due_reminders(self):
         while True:

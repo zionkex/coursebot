@@ -126,6 +126,9 @@ async def add_courses(
     session.add(course)
     await session.commit()
 
+async def get_user_name(session: AsyncSession, user_id: int) -> str:
+    result = await session.execute(select(User.telegram_name).where(User.id == user_id))
+    return result.scalar_one_or_none()
 
 async def get_user_by_telegram_id(
     session: AsyncSession, telegram_id: int, get_roles: bool = False

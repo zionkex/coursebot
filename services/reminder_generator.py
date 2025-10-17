@@ -93,9 +93,9 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
         return
 
 
-async def main():
-    # Нагадування за 2 години
-    await generate_reminder(TimeEnum.fifteen_minutes, "Давид")
-
-
-asyncio.run(main())
+# async def main():
+#     # Нагадування за 2 години
+#     await generate_reminder(TimeEnum.fifteen_minutes, "Давид")
+#
+#
+# asyncio.run(main())

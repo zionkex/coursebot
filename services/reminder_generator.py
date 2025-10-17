@@ -74,6 +74,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                         i,
                         models[model_index],
                     )
+                    print(text)
                     return text
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
@@ -84,6 +85,7 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                         i += 1
                 elif e.response.status_code >= 400:
                     model_index += 1
+                print(models[model_index], "error")
                 await asyncio.sleep(1)
             except (httpx.ReadTimeout, httpx.ConnectTimeout):
                 await asyncio.sleep(5)

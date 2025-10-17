@@ -35,7 +35,7 @@ async def main():
     scheduler = Scheduler(redis_url=settings.redis.url, bot_token=settings.BOT_TOKEN)
     await scheduler.start()
     reminder = Reminder(user_id=5,interval_days=7,time=TimeEnum.two_hour.value)
-    await scheduler.add_reminder(reminder=reminder,day_of_week=5,send_time=time(16,15))
+    await scheduler.add_reminder(reminder=reminder,day_of_week=4,send_time=time(13,40))
     try:
         await dp.start_polling(bot)
     finally:

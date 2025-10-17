@@ -6,7 +6,7 @@ from redis.asyncio import Redis
 from aiogram import Bot
 
 from database.engine import db_connecter
-from database.queries import get_user_name
+from database.queries import get_user_by_id
 from services.reminder_generator import generate_reminder
 from utils.time import TimeEnum
 
@@ -38,9 +38,11 @@ class Scheduler:
 
     async def send_before_lesson_reminder(self, reminder: Reminder):
         async with db_connecter.sessionmaker() as session:
-            name =await get_user_name(session=session, user_id=reminder.user_id)
+            user =await get_user_by_id(session=session, user_id=reminder.user_id)
         text = await generate_reminder(time_left=reminder.time, student_name=name)
-        await self.bot.send_message(chat_id=reminder.user_id,text=text)
+        print("***")
+        await self.bot.send_message(chat_id=user.telegram_id,text=text)
+        print("---")
 
     async def _process_due_reminders(self):
         while True:
@@ -48,7 +50,7 @@ class Scheduler:
             reminders = await self.redis.zrangebyscore(self.redis_key, 0, now_ts)
             for data in reminders:
                 reminder = msgspec.msgpack.decode(data, type=Reminder)
-                self.send_before_lesson_reminder(reminder=reminder)
+                await self.send_before_lesson_reminder(reminder=reminder)
                 await self.redis.zrem(self.redis_key, data)
             await asyncio.sleep(1)
 

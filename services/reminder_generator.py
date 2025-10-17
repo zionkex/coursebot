@@ -21,12 +21,12 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
     i = 0
     model_index = 0
     async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
-        if time_left.value == TimeEnum.two_hour.value:
+        if time_left == TimeEnum.two_hour.value:
             style_hint = (
                 "Можеш почати з привітання (наприклад, 'Привіт' чи 'Хей' чи щось) на початку постав смайл, "
                 "щоб створити дружню атмосферу."
             )
-        elif time_left.value == TimeEnum.fifteen_minutes.value:
+        elif time_left == TimeEnum.fifteen_minutes.value:
             style_hint = (
                 "НЕ(!) привітайся та не використовуй код <code> взагалі. Зроби повідомлення більш динамічним і коротким, "
                 "ніби нагадування від друга перед стартом."
@@ -77,6 +77,8 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                     # )
                     print(text)
                     return text
+            except (httpx.ReadTimeout, httpx.ConnectTimeout):
+                await asyncio.sleep(5)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     if i == len(tokens) - 1:
@@ -88,8 +90,8 @@ async def generate_reminder(time_left: TimeEnum, student_name: str | None = None
                     model_index += 1
                 print(models[model_index], "error")
                 await asyncio.sleep(5)
-            except (httpx.ReadTimeout, httpx.ConnectTimeout):
-                await asyncio.sleep(5)
+            except Exception as e:
+                return
             if model_index == len(models) - 1 and i == len(tokens) - 1:
                 break
         print("❌ Не вдалося отримати відповідь від OpenRouter.")

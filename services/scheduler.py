@@ -55,10 +55,11 @@ class Scheduler:
         async with db_connecter.sessionmaker() as session:
             user: User = await get_user_by_id(session=session, user_id=reminder.user_id)
             print(user.telegram_id)
-        text = await generate_reminder(time_left=reminder.time, student_name=user.telegram_name)
-        logger.info(f"Відправка нагадування користувачу {user.telegram_name} ({user.telegram_id})")
-        await self.bot.send_message(chat_id=user.id, text=text,parse_mode=ParseMode.HTML)
-        logger.info("Нагадування успішно відправлено")
+        text = await generate_reminder(time_left=reminder.time, student_name=user)
+        if text:
+            logger.info(f"Відправка нагадування користувачу {user.telegram_name} ({user.telegram_id})")
+            await self.bot.send_message(chat_id=user.telegram_id, text=text,parse_mode=ParseMode.HTML)
+            logger.info("Нагадування успішно відправлено")
         # except Exception as e:
         #     logger.exception(f"Помилка при відправці нагадування: {e}")
 

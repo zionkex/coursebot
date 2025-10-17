@@ -12,6 +12,7 @@ models = [
     "meta-llama/llama-4-maverick:free",
 ]
 tokens = [
+    "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",
     "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",
     "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",
     "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",
@@ -33,70 +34,67 @@ async def generate_reminder(time_left: str, student_name: str | None = None):
                 "ніби нагадування від друга перед стартом."
             )
         while True:
-            try:
-                response = await client.post(
-                    url="https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {tokens[i]}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": f"{models[model_index]}",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": (
-                                    "Ти креативний асистент, який створює веселі нагадування для дітей 🧒. "
-                                    "Повертаєш лише текст у HTML стилі Telegram "
-                                    "(<b>, <i>, <code>), без markdown і без пояснень. "
-                                    "Пиши без орфографічних помилок, дружнім тоном і з емодзі."
-                                ),
-                            },
-                            {
-                                "role": "user",
-                                "content": (
-                                    f"{style_hint}"
-                                    f"Створи коротке, веселе нагадування для дитини до 12 років "
-                                    f"{f'на ім’я {student_name} ' if student_name else ''}"
-                                    f"про те, що урок програмування на Python 🐍 почнеться через {time_left}. "
-                                    "Текст має бути доброзичливим, з емодзі і одним жартівливим рядком Python-коду "
-                                    "всередині тегу <code>. Не пиши про HTML або пояснення."
-                                ),
-                            },
-                        ],
-                    },
-                )
-                data = response.json()
-                print(data)
-                if response.status_code == 200:
-                    text = data["choices"][0]["message"]["content"]
-                    # print(
-                    #     f"✅ Нагадування ({time_left.value}):\n{text}\n",
-                    #     "**",
-                    #     i,
-                    #     models[model_index],
-                    # )
-                    print(text)
-                    return text
-            except (httpx.ReadTimeout, httpx.ConnectTimeout):
-                await asyncio.sleep(5)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    if i == len(tokens) - 1:
-                        i = 0
-                        model_index += 1
-                    else:
-                        i += 1
-                elif e.response.status_code >= 400:
+
+            response = await client.post(
+                url="https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {tokens[i]}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": f"{models[model_index]}",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Ти креативний асистент, який створює веселі нагадування для дітей 🧒. "
+                                "Повертаєш лише текст у HTML стилі Telegram "
+                                "(<b>, <i>, <code>), без markdown і без пояснень. "
+                                "Пиши без орфографічних помилок, дружнім тоном і з емодзі."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"{style_hint}"
+                                f"Створи коротке, веселе нагадування для дитини до 12 років "
+                                f"{f'на ім’я {student_name} ' if student_name else ''}"
+                                f"про те, що урок програмування на Python 🐍 почнеться через {time_left}. "
+                                "Текст має бути доброзичливим, з емодзі і одним жартівливим рядком Python-коду "
+                                "всередині тегу <code>. Не пиши про HTML або пояснення."
+                            ),
+                        },
+                    ],
+                },
+            )
+            data = response.json()
+            print(data)
+            if response.status_code == 200:
+                text = data["choices"][0]["message"]["content"]
+                # print(
+                #     f"✅ Нагадування ({time_left.value}):\n{text}\n",
+                #     "**",
+                #     i,
+                #     models[model_index],
+                # )
+                print(text)
+                return text
+            if response.status_code == 429:
+                if i == len(tokens) - 1:
+                    i = 0
                     model_index += 1
-                print(models[model_index], "error")
-                await asyncio.sleep(5)
-            except Exception as e:
-                return
+                else:
+                    i += 1
+            elif response.status_code >= 399:
+                model_index += 1
+            print(models[model_index], "error")
+            await asyncio.sleep(5)
             if model_index == len(models) - 1 and i == len(tokens) - 1:
                 break
-        print("❌ Не вдалося отримати відповідь від OpenRouter.")
-        return
+
+
+            print("❌ Не вдалося отримати відповідь від OpenRouter.")
+            return
 
 
 # async def main():
